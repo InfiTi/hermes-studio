@@ -20,6 +20,7 @@ const DefaultCredentialPrompt = defineAsyncComponent(async () => (await import('
 const ProviderConfigurationPrompt = defineAsyncComponent(async () => (await import('@/components/hermes/models/ProviderConfigurationPrompt.vue')).default)
 const WebPet = defineAsyncComponent(async () => (await import('@/components/hermes/pets/WebPet.vue')).default)
 const GlobalPendingActions = defineAsyncComponent(async () => (await import('@/components/layout/GlobalPendingActions.vue')).default)
+const BackgroundTasksIndicator = defineAsyncComponent(async () => (await import('@/components/layout/BackgroundTasksIndicator.vue')).default)
 
 const {
   isDark,
@@ -164,6 +165,7 @@ useKeyboard()
           <DefaultCredentialPrompt v-if="!isDesktopPetRoute && !isStandaloneChatPage" />
           <ProviderConfigurationPrompt v-if="!isDesktopPetRoute && !isStandaloneChatPage" />
           <GlobalPendingActions v-if="!isLoginPage && !isDesktopPetRoute && !isStandaloneChatPage" />
+          <BackgroundTasksIndicator v-if="!isLoginPage && !isDesktopPetRoute && !isStandaloneChatPage" />
         </NNotificationProvider>
       </NDialogProvider>
     </NMessageProvider>

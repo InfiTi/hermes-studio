@@ -11,6 +11,7 @@ import { useProfilesStore } from './profiles'
 import { useSettingsStore } from './settings'
 import { primeCompletionSound, playCompletionSound } from '@/utils/completion-sound'
 import { showCompletionNotification } from '@/utils/completion-notification'
+import { showInAppCompletionNotification } from '@/utils/in-app-notification'
 import { detectThinkingBoundary } from '@/utils/thinking-parser'
 import { isKnownBridgeSessionCommand } from '@/utils/hermes/bridge-session-commands'
 import { responseErrorMessage } from '@/utils/http-error'
@@ -3055,10 +3056,20 @@ export const useChatStore = defineStore('chat', () => {
       ? session.messages.find(m => m.id === messageId)
       : [...session.messages].reverse().find(m => m.role === 'assistant')
 
+    const title = truncateNotificationText(session.title || 'Hermes', 80)
+    const body = completionNotificationBody(session, message)
     const agent = completionNotificationAgent(session)
+
+    // In-app banner: always visible in the page, even while the tab is focused
+    // (system notifications only appear when the app is in the background).
+    showInAppCompletionNotification({
+      title: `✓ ${title}`,
+      body,
+    })
+
     void showCompletionNotification({
-      title: truncateNotificationText(session.title || 'Hermes', 80),
-      body: completionNotificationBody(session, message),
+      title,
+      body,
       icon: agent.icon,
       tag: `hermes-complete-${sessionId}-${message?.id || Date.now()}`,
     })
@@ -3776,6 +3787,7 @@ export const useChatStore = defineStore('chat', () => {
             case 'subagent.thinking':
             case 'subagent.complete':
             case 'delegation.updated': {
+              console.info(`[chat] ${evt.event}`, { sid, backgroundPending: (evt as any).background_pending || 0 })
               runHadToolActivity = true
               handleSubagentEvent(sid, evt)
               break
@@ -3802,6 +3814,7 @@ export const useChatStore = defineStore('chat', () => {
             }
 
             case 'run.completed': {
+              console.info('[chat] run.completed', { sid, backgroundPending: (evt as any).background_pending || 0, queueRemaining: (evt as any).queue_remaining || 0 })
               const msgs = getSessionMsgs(sid)
               const lastMsg = activeAssistantMessageId
                 ? msgs.find(m => m.id === activeAssistantMessageId)
@@ -3957,6 +3970,7 @@ export const useChatStore = defineStore('chat', () => {
             }
 
             case 'run.failed': {
+              console.info('[chat] run.failed', { sid, error: (evt as any).error, backgroundPending: (evt as any).background_pending || 0 })
               const failedMessages = getSessionMsgs(sid)
               const failedAssistant = activeAssistantMessageId
                 ? failedMessages.find(message => message.id === activeAssistantMessageId)
@@ -4470,6 +4484,7 @@ export const useChatStore = defineStore('chat', () => {
         case 'subagent.thinking':
         case 'subagent.complete':
         case 'delegation.updated': {
+          console.info(`[chat] ${evt.event}`, { sid, backgroundPending: (evt as any).background_pending || 0 })
           runHadToolActivity = true
           handleSubagentEvent(sid, evt)
           break
@@ -4499,6 +4514,7 @@ export const useChatStore = defineStore('chat', () => {
           clearAgentEventMessages(sid)
           const hasQueue = (evt as any).queue_remaining > 0
           const hasBackground = (evt.background_pending || 0) > 0
+          console.info('[chat] run.completed', { sid, queue: hasQueue, background: hasBackground })
           if (hasQueue) {
             queueLengths.value.set(sid, (evt as any).queue_remaining)
           } else {
@@ -4648,6 +4664,9 @@ export const useChatStore = defineStore('chat', () => {
 
         case 'run.failed': {
           const failedMessages = getSessionMsgs(sid)
+          const hasQueueFailed = (evt as any).queue_remaining > 0
+          const hasBackgroundFailed = (evt.background_pending || 0) > 0
+          console.info('[chat] run.failed', { sid, queue: hasQueueFailed, background: hasBackgroundFailed, error: (evt as any).error })
           const failedAssistant = activeAssistantMessageId
             ? failedMessages.find(message => message.id === activeAssistantMessageId)
             : [...failedMessages].reverse().find(message => message.role === 'assistant' && message.isStreaming)

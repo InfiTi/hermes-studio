@@ -650,6 +650,12 @@ export async function handleBridgeRun(
     )
     state.runId = started.run_id
     if (data.background_delegation_id && data.background_claim_id) {
+      bridgeLogger.info({
+        sessionId: session_id,
+        delegationId: data.background_delegation_id,
+        claimId: data.background_claim_id,
+        profile,
+      }, '[chat-run-socket] background notification run accepted')
       await bridge.completeBackgroundNotification(
         session_id,
         profile,

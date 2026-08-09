@@ -920,6 +920,14 @@ export class ChatRunSocket {
     const delegationId = String(notification.delegation_id || '').trim()
     const claimId = String(notification.claim_id || '').trim()
     if (!sessionId || !delegationId || !claimId || !notification.message) return
+    logger.info({
+      sessionId,
+      delegationId,
+      claimId,
+      profile: notification.profile || null,
+      status: notification.status || 'completed',
+      messageChars: String(notification.message || '').length,
+    }, '[chat-run-socket] background notification received')
 
     const releaseClaim = () => this.backgroundBridge.releaseBackgroundNotification(
       sessionId,
@@ -960,6 +968,12 @@ export class ChatRunSocket {
       delegationId,
       notification.event || {},
     )
+    logger.info({
+      sessionId,
+      delegationId,
+      status: notification.status || 'completed',
+      backgroundPending: this.backgroundPendingCount(state),
+    }, '[chat-run-socket] background result persisted')
     const previousDelegation = state.backgroundDelegations[delegationId]
     state.backgroundDelegations[delegationId] = {
       ...previousDelegation,
@@ -1001,6 +1015,7 @@ export class ChatRunSocket {
     state.isWorking = true
     state.profile = next.profile
     state.source = next.source
+    logger.info({ sessionId, delegationId }, '[chat-run-socket] dispatching background delegation run')
     this.runQueuedItem(this.socketForBackgroundRun(sessionId), sessionId, next, next.profile)
   }
 
@@ -1061,6 +1076,15 @@ export class ChatRunSocket {
         if (!sessionId) continue
         const state = await this.sessionStateForBackground(sessionId)
         if (state) this.applyBackgroundSessionPoll(poll, state)
+      }
+      if ((result.pending_count || 0) > 0 || (result.notifications || []).length > 0) {
+        logger.info({
+          pendingCount: result.pending_count || 0,
+          sessionPolls: (result.sessions || []).length,
+          notifications: (result.notifications || []).length,
+          recovering,
+          brokerId: result.broker_id || null,
+        }, '[chat-run-socket] background poll found pending work')
       }
       for (const notification of result.notifications || []) {
         await this.scheduleBackgroundNotification(notification)
