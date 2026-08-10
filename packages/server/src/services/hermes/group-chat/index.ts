@@ -515,13 +515,40 @@ class ChatStorage {
                 `SELECT ${ROOM_AGENT_SELECT_COLUMNS} FROM gc_room_agents WHERE roomId = ? AND id = ?`
             ).get(message.roomId, recordId) as RoomAgent | undefined) || null
         }
-        return (db.prepare(
+        const found = (db.prepare(
             `SELECT ${ROOM_AGENT_SELECT_COLUMNS}
              FROM gc_room_agents
              WHERE roomId = ? AND (id = ? OR agentId = ?)
              ORDER BY removedAt ASC
              LIMIT 1`
         ).get(message.roomId, message.senderId, message.senderId) as RoomAgent | undefined) || null
+        if (found) return found
+
+        // 桥接客人（guest sender，非注册 room agent）——只做展示层修正：
+        // 已知的 Codex 直插 sender 渲染为 codex 图标，避免全部 fallback 成默认 hermes 图标。
+        const senderId = String(message.senderId || '')
+        const senderName = String(message.senderName || '')
+        if (senderName === 'Codex' || senderId === 'codex-bridge' || senderId === 'mskdppipeq8xy2') {
+            return {
+                id: `historical:${senderId || senderName}`,
+                roomId: message.roomId,
+                agentId: senderId,
+                agent: 'codex',
+                profile: '',
+                provider: '',
+                model: '',
+                apiMode: '',
+                reasoningEffort: '',
+                name: 'Codex',
+                description: 'Codex 桥接（房间直插，非注册成员）',
+                avatar: '',
+                invited: 0,
+                executorType: 'server',
+                connectionStatus: 'offline',
+                ownerMemberId: '',
+            }
+        }
+        return null
     }
 
     private snapshotMessageSender(msg: ChatMessage, existing?: ChatMessage | null): ChatMessage {
