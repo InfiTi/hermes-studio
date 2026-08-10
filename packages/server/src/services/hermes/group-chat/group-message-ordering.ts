@@ -45,7 +45,12 @@ function compareStorageIds(a: string, b: string): number {
     // TEXT values. JavaScript relational comparison uses UTF-16 code units,
     // which disagrees for supplementary-plane characters versus some BMP
     // characters and can make SQL cursor prefilters silently drop messages.
-    return Buffer.compare(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'))
+    // Guard against NULL ids: SQLite permits NULL in a TEXT PRIMARY KEY, and
+    // legacy writers have inserted NULL-id rows that crash Buffer.from(null).
+    return Buffer.compare(
+        Buffer.from(String(a ?? ''), 'utf8'),
+        Buffer.from(String(b ?? ''), 'utf8'),
+    )
 }
 
 export function sortGroupMessagesCanonical<T extends CanonicalGroupMessage>(messages: readonly T[]): T[] {

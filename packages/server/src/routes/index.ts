@@ -52,6 +52,7 @@ import { runtimeVersionRoutes } from './hermes/runtime-versions'
 import { writeGateRoutes } from './hermes/write-gate'
 import { petdexPublicRoutes, petdexRoutes } from './hermes/petdex'
 import { petRoutes } from './hermes/pets'
+import { evolutionWebhookRoutes } from './evolution-webhook'
 
 /**
  * Register all routes on the Koa app.
@@ -70,6 +71,7 @@ export function registerRoutes(app: any, authMiddleware: Array<(ctx: Context, ne
   app.use(petdexPublicRoutes.routes())
   app.use(groupChatPublicRoutes.routes())
   app.use(chatWebhookPublicRoutes.routes())
+  app.use(evolutionWebhookRoutes.routes())
 
   // --- Auth middleware: all routes below require authentication ---
   authMiddleware.forEach((middleware) => app.use(middleware))
